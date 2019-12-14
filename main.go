@@ -1,8 +1,13 @@
 package main
 
-import "test/internal/models"
+import (
+	"log"
+	"test/internal/app/api"
+)
 
-func main(){
-	u := models.User{}
-	u.Validation()
+func main() {
+	log.Println("Starting server")
+	if err := api.Start(); err != nil {
+		log.Fatal(err)
+	}
 }
