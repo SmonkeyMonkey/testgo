@@ -1,19 +1,22 @@
 package mongostore
 
 import (
+	"github.com/go-redis/redis/v7"
 	"go.mongodb.org/mongo-driver/mongo"
 	"test/internal/app/store"
 )
 
 type Store struct {
 	db             *mongo.Client
+	redis          *redis.Client
 	userRepository *UserRepository
 	gameRepository *GameRepository
 }
 
-func New(db *mongo.Client) *Store {
+func New(db *mongo.Client, redis *redis.Client) *Store {
 	return &Store{
-		db: db,
+		db:    db,
+		redis: redis,
 	}
 }
 func (s *Store) User() store.UserRepository {

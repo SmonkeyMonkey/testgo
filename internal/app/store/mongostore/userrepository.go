@@ -3,7 +3,6 @@ package mongostore
 import (
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"test/internal/app/models"
 	"time"
@@ -25,12 +24,15 @@ func (r *UserRepository) Create(u *models.User) error {
 	}
 	return nil
 }
-func (r *UserRepository) GetAll() []models.User {
+func (r *UserRepository) GetAll(page int) []models.User {
 	var users []models.User
-	pagination := options.Find().SetLimit(25) // set limit users on page
+	var itemsPerPage = 20
+	start := (page - 1) * itemsPerPage
+	stop := start + itemsPerPage
+
 	collection := r.store.db.Database("test").Collection("users")
 	ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
-	cursor, _ := collection.Find(ctx, bson.M{}, pagination)
+	cursor, _ := collection.Find(ctx, bson.M{})
 	defer cursor.Close(ctx)
 	for cursor.Next(ctx) {
 		var user models.User
@@ -40,5 +42,5 @@ func (r *UserRepository) GetAll() []models.User {
 		}
 		users = append(users, user)
 	}
-	return users
+	return users[start:stop]
 }

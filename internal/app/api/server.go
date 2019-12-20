@@ -2,8 +2,10 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"github.com/gorilla/mux"
 	"net/http"
+	"strconv"
 	"test/internal/app/models"
 	"test/internal/app/store"
 )
@@ -26,20 +28,35 @@ func NewServer(store store.Store) *server {
 	return srv
 }
 func (s *server) initRoutes() {
+	s.router.HandleFunc("/topusers/{page}", s.handleGetTopUsers()).Methods("GET")
+
 	s.router.HandleFunc("/users", s.handleUsersCreate()).Methods("POST")
-	s.router.HandleFunc("/users", s.handleGetAllUsers()).Methods("GET")
-	s.router.HandleFunc("/games", s.handleGetAllGames()).Methods("GET")
+	s.router.HandleFunc("/users/{page}", s.handleGetAllUsers()).Methods("GET")
+
+	s.router.HandleFunc("/games/{page}", s.handleGetAllGames()).Methods("GET")
 	s.router.HandleFunc("/games", s.handleGamesCreate()).Methods("POST")
+}
+func (s *server) handleGetTopUsers() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		page, _ := strconv.Atoi(mux.Vars(request)["page"])
+		users := s.store.Game().GetTopUsers(page)
+		if err := page > len(users); err == true {
+			s.error(writer,request,402,errors.New("Ошибка при обработке запроса"))
+		}
+		s.respond(writer, request, http.StatusOK, users)
+	}
 }
 func (s *server) handleGetAllUsers() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		users := s.store.User().GetAll()
+		page, _ := strconv.Atoi(mux.Vars(request)["page"])
+		users := s.store.User().GetAll(page)
 		s.respond(writer, request, http.StatusOK, users)
 	}
 }
 func (s *server) handleGetAllGames() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
-		users := s.store.Game().GetAll()
+		page, _ := strconv.Atoi(mux.Vars(request)["page"])
+		users := s.store.Game().GetAll(page)
 		s.respond(writer, request, http.StatusOK, users)
 	}
 }
@@ -75,6 +92,7 @@ func (s *server) handleUsersCreate() http.HandlerFunc {
 }
 func (s *server) handleGamesCreate() http.HandlerFunc {
 	type request struct {
+		UserId       string `json:"user_id"`
 		PointsGained string `json:"points_gained"`
 		WinStatus    string `json:"win_status"`
 		GameType     string `json:"game_type"`
@@ -82,13 +100,19 @@ func (s *server) handleGamesCreate() http.HandlerFunc {
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		req := &request{}
+		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
+			s.error(w, r, http.StatusBadRequest, err)
+			return
+		}
+		userId := req.UserId
 		g := &models.Game{
 			PointsGained: req.PointsGained,
 			WinStatus:    req.PointsGained,
 			GameType:     req.GameType,
 			Created:      req.Created,
 		}
-		s.store.Game().Create(g)
+
+		s.store.Game().Create(g, userId)
 		s.respond(w, r, http.StatusCreated, g)
 	}
 }

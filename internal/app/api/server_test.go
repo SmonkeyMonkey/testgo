@@ -13,15 +13,17 @@ import (
 
 func TestServer_HandleGetAllUsers(t *testing.T) {
 	db := mongostore.TestDB(t)
-	s := api.NewServer(mongostore.New(db))
+	red := mongostore.TestRedis(t)
+	s := api.NewServer(mongostore.New(db, red))
 	rec := httptest.NewRecorder()
-	req, _ := http.NewRequest(http.MethodGet, "/users", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/users/1", nil)
 	s.ServeHTTP(rec, req)
 	assert.Equal(t, 200, rec.Code)
 }
 func TestServer_HandleUserCreate(t *testing.T) {
 	db := mongostore.TestDB(t)
-	s := api.NewServer(mongostore.New(db))
+	red := mongostore.TestRedis(t)
+	s := api.NewServer(mongostore.New(db, red))
 	testCases := []struct {
 		name string
 		data interface{}
@@ -57,7 +59,8 @@ func TestServer_HandleUserCreate(t *testing.T) {
 }
 func TestServer_HandleGameCreate(t *testing.T) {
 	db := mongostore.TestDB(t)
-	s := api.NewServer(mongostore.New(db))
+	red := mongostore.TestRedis(t)
+	s := api.NewServer(mongostore.New(db, red))
 	testCases := []struct {
 		name string
 		data interface{}
@@ -66,6 +69,7 @@ func TestServer_HandleGameCreate(t *testing.T) {
 		{
 			name: "valid",
 			data: map[string]interface{}{
+				"user_id":       "5defaf210d7a7fb756a4396c",
 				"points_gained": "677",
 				"win_status":    "0",
 				"game_type":     "11",

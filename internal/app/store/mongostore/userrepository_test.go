@@ -9,14 +9,16 @@ import (
 
 func TestUserRepository_Create(t *testing.T) {
 	db := mongostore.TestDB(t)
-	s := mongostore.New(db)
+	red := mongostore.TestRedis(t)
+	s := mongostore.New(db, red)
 	u := models.TestUser(t)
 	assert.NoError(t, s.User().Create(u))
 	assert.NotNil(t, u.Email)
 }
 func TestUserRepository_GetAll(t *testing.T) {
 	db := mongostore.TestDB(t)
-	s := mongostore.New(db)
-	assert.NotEmpty(t, s.User().GetAll())
-	assert.Len(t, s.User().GetAll(), 25)
+	red := mongostore.TestRedis(t)
+	s := mongostore.New(db, red)
+	assert.NotEmpty(t, s.User().GetAll(20))
+	assert.Len(t, s.User().GetAll(1), 20)
 }
