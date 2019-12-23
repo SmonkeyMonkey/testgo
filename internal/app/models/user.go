@@ -5,12 +5,12 @@ import (
 )
 
 type User struct {
-	Email     string `json:"email"  validate:"required,email"`
-	LastName  string `json:"last_name"  validate:"required"`
-	Country   string `json:"country" validate:"required"`
-	City      string `json:"city" validate:"required"`
-	Gender    string `json:"gender" validate:"required"`
-	BirthDate string `json:"birth_date" validate:"required"`
+	Email     string `json:"email"  validate:"required,email" bson:"email"`
+	LastName  string `json:"last_name"  validate:"required" bson:"last_name"`
+	Country   string `json:"country" validate:"required" bson:"country"`
+	City      string `json:"city" validate:"required" bson:"city"`
+	Gender    string `json:"gender" validate:"required" bson:"gender"`
+	BirthDate string `json:"birth_date" validate:"required" bson:"birth_date"`
 }
 
 func (u *User) Validation() error {

@@ -2,7 +2,6 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/gorilla/mux"
 	"net/http"
 	"strconv"
@@ -30,6 +29,7 @@ func NewServer(store store.Store) *server {
 func (s *server) initRoutes() {
 	s.router.HandleFunc("/topusers/{page}", s.handleGetTopUsers()).Methods("GET")
 
+	s.router.HandleFunc("/sortedgames/{sort}/{page}",s.handleGetSortedGames()).Methods("GET")
 	s.router.HandleFunc("/users", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/users/{page}", s.handleGetAllUsers()).Methods("GET")
 
@@ -40,12 +40,18 @@ func (s *server) handleGetTopUsers() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		page, _ := strconv.Atoi(mux.Vars(request)["page"])
 		users := s.store.Game().GetTopUsers(page)
-		if err := page > len(users); err == true {
-			s.error(writer,request,402,errors.New("Ошибка при обработке запроса"))
-		}
 		s.respond(writer, request, http.StatusOK, users)
 	}
 }
+func (s *server) handleGetSortedGames() http.HandlerFunc {
+	return func(writer http.ResponseWriter, request *http.Request) {
+		page, _ := strconv.Atoi(mux.Vars(request)["page"])
+		sort := mux.Vars(request)["sort"]
+		users := s.store.Game().GetSortedGames(sort,page)
+		s.respond(writer, request, http.StatusOK, users)
+	}
+}
+
 func (s *server) handleGetAllUsers() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		page, _ := strconv.Atoi(mux.Vars(request)["page"])
