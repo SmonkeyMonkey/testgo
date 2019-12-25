@@ -29,12 +29,12 @@ func (r *GameRepository) Create(g *models.Game, userId string) error {
 }
 func (r *GameRepository) GetAll(page int) []models.Game {
 	var games []models.Game
-	var itemsPerPage = 20
-	start := (page - 1) * itemsPerPage
-	stop := start + itemsPerPage
+	itemsPerPage := 30
+	skip := (page - 1) * itemsPerPage
 	collection := r.store.db.Database("test").Collection("user_games")
 	ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
-	cursor, _ := collection.Find(ctx, bson.M{})
+	projection := options.Find().SetSkip(int64(skip)).SetLimit(int64(itemsPerPage))
+	cursor, _ := collection.Find(ctx, bson.M{},projection)
 
 	defer cursor.Close(ctx)
 	for cursor.Next(ctx) {
@@ -44,28 +44,26 @@ func (r *GameRepository) GetAll(page int) []models.Game {
 			log.Fatal("error on decoding the document", err)
 		}
 		games = append(games, game)
-
 	}
-	return games[start:stop]
+	return games
 }
 func (r *GameRepository) GetTopUsers(page int) []models.User {
 	var users []models.User
 
-	var itemsPerPage = 3
-	start := (page - 1) * itemsPerPage
-	stop := start + itemsPerPage
+	itemsPerPage := 15
+	skip := (page - 1) * itemsPerPage
 
 	count, _ := r.store.db.Database("test").Collection("users").CountDocuments(context.TODO(), bson.M{})
 	u, _ := r.store.redis.ZRevRangeWithScores("count_games", 0, count).Result()
 
 	for _, id := range u {
 		id, _ := primitive.ObjectIDFromHex(fmt.Sprintf("%v", id.Member))
-		projection := bson.D{
+		projection := options.Find().SetProjection(bson.D{
 			{"last_name", 1},
 			{"birth_date", 1},
-		}
+		}).SetSkip(int64(skip)).SetLimit(int64(itemsPerPage))
 
-		cursor, _ := r.store.db.Database("test").Collection("users").Find(context.TODO(), bson.M{"_id": id}, options.Find().SetProjection(projection))
+		cursor, _ := r.store.db.Database("test").Collection("users").Find(context.TODO(), bson.M{"_id": id}, projection)
 
 		for cursor.Next(context.TODO()) {
 			var user models.User
@@ -76,13 +74,12 @@ func (r *GameRepository) GetTopUsers(page int) []models.User {
 			users = append(users, user)
 		}
 	}
-	return users[start:stop]
+	return users
 }
 func (r *GameRepository) GetSortedGames(sort string,page int) []models.Game {
 	var games []models.Game
-	var itemsPerPage = 20
-	start := (page - 1) * itemsPerPage
-	stop := start + itemsPerPage
+	itemsPerPage := 30
+	skip := (page - 1) * itemsPerPage
 	collection := r.store.db.Database("test").Collection("user_games")
 	ctx, _ := context.WithTimeout(context.Background(), 20*time.Second)
 
@@ -91,7 +88,9 @@ func (r *GameRepository) GetSortedGames(sort string,page int) []models.Game {
 	}).SetProjection(bson.D{
 			{"game_type",1},
 			{"created",1},
-	})
+			{"points_gained",1},
+	}).SetSkip(int64(skip)).SetLimit(int64(itemsPerPage))
+
 
 	cursor, _ := collection.Find(ctx, bson.M{}, projection)
 
@@ -103,7 +102,6 @@ func (r *GameRepository) GetSortedGames(sort string,page int) []models.Game {
 			log.Fatal("error on decoding the document", err)
 		}
 		games = append(games, game)
-
 	}
-	return games[start:stop]
+	return games
 }
