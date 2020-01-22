@@ -18,7 +18,8 @@ func TestServer_HandleGetAllUsers(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req, _ := http.NewRequest(http.MethodGet, "/users/1", nil)
 	s.ServeHTTP(rec, req)
-	assert.Equal(t, 200, rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.NotEmpty(t,rec.Body)
 }
 func TestServer_HandleUserCreate(t *testing.T) {
 	db := mongostore.TestDB(t)
@@ -88,4 +89,24 @@ func TestServer_HandleGameCreate(t *testing.T) {
 			assert.Equal(t, tc.code, rec.Code)
 		})
 	}
+}
+func TestServer_HandleGetTopUsers(t *testing.T){
+	db := mongostore.TestDB(t)
+	red := mongostore.TestRedis(t)
+	s := api.NewServer(mongostore.New(db, red))
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/topusers/1", nil)
+	s.ServeHTTP(rec,req)
+	assert.Equal(t,http.StatusOK,rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code)
+}
+func TestServer_HandleGetSortedGames(t *testing.T) {
+	db := mongostore.TestDB(t)
+	red := mongostore.TestRedis(t)
+	s := api.NewServer(mongostore.New(db, red))
+	rec := httptest.NewRecorder()
+	req, _ := http.NewRequest(http.MethodGet, "/sortedgames/created/1", nil)
+	s.ServeHTTP(rec,req)
+	assert.Equal(t,http.StatusOK,rec.Code)
+	assert.Equal(t, http.StatusOK, rec.Code)
 }

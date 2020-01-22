@@ -3,15 +3,28 @@ package api
 import (
 	"encoding/json"
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"net/http"
 	"strconv"
 	"test/internal/app/models"
 	"test/internal/app/store"
+	"time"
 )
 
 type server struct {
 	router *mux.Router
 	store  store.Store
+	logger *logrus.Logger
+}
+
+type responseWriter struct {
+	http.ResponseWriter
+	code int
+}
+
+func (w *responseWriter) WriteHeader(statusCode int) {
+	w.code = statusCode
+	w.ResponseWriter.WriteHeader(statusCode)
 }
 
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -22,14 +35,17 @@ func NewServer(store store.Store) *server {
 	srv := &server{
 		router: mux.NewRouter(),
 		store:  store,
+		logger: logrus.New(),
 	}
 	srv.initRoutes()
 	return srv
 }
 func (s *server) initRoutes() {
+	s.router.Use(s.logRequest)
+
 	s.router.HandleFunc("/topusers/{page}", s.handleGetTopUsers()).Methods("GET")
 
-	s.router.HandleFunc("/sortedgames/{sort}/{page}",s.handleGetSortedGames()).Methods("GET")
+	s.router.HandleFunc("/sortedgames/{sort}/{page}", s.handleGetSortedGames()).Methods("GET")
 	s.router.HandleFunc("/users", s.handleUsersCreate()).Methods("POST")
 	s.router.HandleFunc("/users/{page}", s.handleGetAllUsers()).Methods("GET")
 
@@ -47,7 +63,7 @@ func (s *server) handleGetSortedGames() http.HandlerFunc {
 	return func(writer http.ResponseWriter, request *http.Request) {
 		page, _ := strconv.Atoi(mux.Vars(request)["page"])
 		sort := mux.Vars(request)["sort"]
-		users := s.store.Game().GetSortedGames(sort,page)
+		users := s.store.Game().GetSortedGames(sort, page)
 		s.respond(writer, request, http.StatusOK, users)
 	}
 }
@@ -76,6 +92,10 @@ func (s *server) handleUsersCreate() http.HandlerFunc {
 		BirthDate string `json:"birth_date"`
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
+	if r.Method != "POST"{
+		s.error(w,r,http.StatusMethodNotAllowed,nil)
+		return
+	}
 		req := &request{}
 		if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 			s.error(w, r, http.StatusBadRequest, err)
@@ -131,4 +151,31 @@ func (s *server) respond(w http.ResponseWriter, r *http.Request, code int, data 
 	if data != nil {
 		json.NewEncoder(w).Encode(data)
 	}
+}
+func (s *server) logRequest(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger := s.logger.WithFields(logrus.Fields{
+			"URL": r.RequestURI,
+			"Method": r.Method,
+		})
+		start := time.Now()
+		rw := &responseWriter{w, http.StatusOK}
+		next.ServeHTTP(rw, r)
+		var level logrus.Level
+		switch {
+		case rw.code >= 500:
+			level = logrus.ErrorLevel
+		case rw.code >= 400:
+			level = logrus.WarnLevel
+		default:
+			level = logrus.InfoLevel
+		}
+		logger.Logf(
+			level,
+			"code: %d %s time per request: %v",
+			rw.code,
+			http.StatusText(rw.code),
+			time.Now().Sub(start),
+		)
+	})
 }

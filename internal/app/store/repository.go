@@ -10,5 +10,5 @@ type GameRepository interface {
 	Create(game *models.Game, userId string) error
 	GetAll(page int) []models.Game
 	GetTopUsers(page int) []models.User
-	GetSortedGames(sort string,page int) []models.Game
+	GetSortedGames(sort string, page int) []*models.Game
 }
